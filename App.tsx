@@ -103,6 +103,25 @@ const App: React.FC = () => {
 
   const addRecording = (result: RecordingResult) => {
     setHistory(prev => [result, ...prev]);
+    
+    // Automatically trigger download to local machine
+    if (result.audioBlob) {
+      const url = URL.createObjectURL(result.audioBlob);
+      const a = document.createElement('a');
+      const now = new Date();
+      const timestamp = now.toISOString().split('.')[0].replace(/[:]/g, '-');
+      const taskName = result.taskTitle.replace(/\s+/g, '_');
+      const setting = result.setting === 'Unknown' ? 'Unknown' : result.setting;
+      
+      a.href = url;
+      a.download = `DBS_${taskName}_Setting_${setting}_${timestamp}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Clean up the URL object after a short delay to ensure download starts
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    }
   };
 
   const isRecordingPath = location.pathname.startsWith('/record');
