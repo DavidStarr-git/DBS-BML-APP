@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Loader2, CheckCircle, Mic, Volume2 } from 'lucide-react';
 import { TASKS, THEME } from '../constants';
 import { StimSetting, RecordingResult } from '../types';
+import { audioBufferToWav } from '../src/utils/wavEncoder';
 
 interface RecordingPageProps {
   currentSetting: StimSetting;
@@ -73,9 +74,20 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        handleSave(audioBlob);
+        
+        // Convert to WAV
+        try {
+          const arrayBuffer = await audioBlob.arrayBuffer();
+          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+          const wavBlob = audioBufferToWav(audioBuffer);
+          handleSave(wavBlob);
+        } catch (err) {
+          console.error("WAV conversion failed, falling back to original", err);
+          handleSave(audioBlob);
+        }
       };
 
       mediaRecorder.start();
