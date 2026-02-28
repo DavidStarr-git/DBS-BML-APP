@@ -1,0 +1,7 @@
+{
+  "name": "DBS BML",
+  "description": "Speech assessment tool for Deep Brain Stimulation patients at University of Florida.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
