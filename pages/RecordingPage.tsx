@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Loader2, CheckCircle, Mic, Volume2 } from 'lucide-react';
 import { TASKS, THEME } from '../constants';
 import { StimSetting, RecordingResult } from '../types';
@@ -15,11 +15,36 @@ interface RecordingPageProps {
 const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, deviceId }) => {
   const { taskId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const task = TASKS.find(t => t.id === taskId);
+
+  const sessionState = location.state as { isSession?: boolean; taskIndex?: number } | null;
+  const isSession = sessionState?.isSession;
+  const currentTaskIndex = sessionState?.taskIndex ?? 0;
   
   const [phase, setPhase] = useState<'intro' | 'countdown' | 'recording' | 'processing' | 'result'>('intro');
   const [countdown, setCountdown] = useState(3);
   const [timer, setTimer] = useState(0);
+  const [randomizedPrompt, setRandomizedPrompt] = useState<string>('');
+
+  useEffect(() => {
+    if (task) {
+      if (task.wordPool && task.sentencePool) {
+        // Shuffle and pick a subset
+        const shuffledWords = [...task.wordPool].sort(() => 0.5 - Math.random());
+        const shuffledSentences = [...task.sentencePool].sort(() => 0.5 - Math.random());
+        
+        // Pick 3 words and 2 sentences
+        const selectedWords = shuffledWords.slice(0, 3);
+        const selectedSentences = shuffledSentences.slice(0, 2);
+        
+        const prompt = `Words: ${selectedWords.join(', ')}\n\nSentences:\n1. ${selectedSentences[0]}\n2. ${selectedSentences[1]}`;
+        setRandomizedPrompt(prompt);
+      } else {
+        setRandomizedPrompt(task.prompt);
+      }
+    }
+  }, [task]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -128,6 +153,21 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
     setTimeout(() => setPhase('result'), 1500);
   };
 
+  const handleNext = () => {
+    if (isSession && currentTaskIndex < TASKS.length - 1) {
+      const nextIndex = currentTaskIndex + 1;
+      navigate(`/record/${TASKS[nextIndex].id}`, { 
+        state: { isSession: true, taskIndex: nextIndex },
+        replace: true
+      });
+      setPhase('intro');
+      setTimer(0);
+      setCountdown(3);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   // Progress ring calculation
   const progress = task ? Math.min((timer / task.durationSeconds) * 100, 100) : 0;
   const radius = 85; 
@@ -135,11 +175,18 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   // Detect if the prompt is a long passage
-  const isLongPrompt = task.prompt.length > 50;
+  const isLongPrompt = randomizedPrompt.length > 50;
 
   if (phase === 'intro') {
     return (
-      <div className="min-h-screen flex flex-col bg-white p-8">
+      <div className="min-h-screen flex flex-col bg-white p-8 relative">
+        {isSession && (
+          <div className="absolute top-8 right-8 bg-blue-50 px-4 py-2 rounded-full border border-blue-100">
+            <span className="text-[10px] font-black text-[#0021A5] uppercase tracking-widest">
+              {currentTaskIndex + 1} out of {TASKS.length} tasks complete
+            </span>
+          </div>
+        )}
         <button onClick={() => navigate('/dashboard')} className="p-2 -ml-2 text-gray-400 self-start"><ChevronLeft size={32} /></button>
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
           <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center text-4xl mb-4">
@@ -158,8 +205,8 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
 
           <div className="p-6 border-2 border-dashed border-gray-100 rounded-[2.5rem] bg-gray-50/30 w-full max-w-sm overflow-y-auto max-h-48">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Preview Text:</p>
-            <span className={`${isLongPrompt ? 'text-lg' : 'text-3xl'} font-black text-[#0021A5] block leading-tight`}>
-                {task.prompt}
+            <span className={`${isLongPrompt ? 'text-lg' : 'text-3xl'} font-black text-[#0021A5] block leading-tight whitespace-pre-wrap`}>
+                {randomizedPrompt}
             </span>
           </div>
 
@@ -199,7 +246,14 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
 
   if (phase === 'recording') {
     return (
-      <div className="min-h-screen flex flex-col bg-white p-8">
+      <div className="min-h-screen flex flex-col bg-white p-8 relative">
+        {isSession && (
+          <div className="absolute top-8 right-8 bg-blue-50 px-4 py-2 rounded-full border border-blue-100">
+            <span className="text-[10px] font-black text-[#0021A5] uppercase tracking-widest">
+              {currentTaskIndex + 1} out of {TASKS.length} tasks complete
+            </span>
+          </div>
+        )}
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
           <div className="space-y-4 w-full">
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -208,8 +262,8 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
             </div>
             
             <div className={`mx-auto max-w-lg ${isLongPrompt ? 'bg-gray-50/50 p-6 rounded-[2.5rem] border border-gray-100' : ''}`}>
-                <h3 className={`${isLongPrompt ? 'text-xl' : 'text-4xl'} font-black text-[#0021A5] leading-tight px-4 transition-all duration-300`}>
-                    {task.prompt}
+                <h3 className={`${isLongPrompt ? 'text-xl' : 'text-4xl'} font-black text-[#0021A5] leading-tight px-4 transition-all duration-300 whitespace-pre-wrap`}>
+                    {randomizedPrompt}
                 </h3>
             </div>
             
@@ -273,7 +327,14 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white p-8 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white p-8 text-center relative">
+      {isSession && (
+        <div className="absolute top-8 right-8 bg-blue-50 px-4 py-2 rounded-full border border-blue-100">
+          <span className="text-[10px] font-black text-[#0021A5] uppercase tracking-widest">
+            {currentTaskIndex + 1} out of {TASKS.length} tasks complete
+          </span>
+        </div>
+      )}
       <div className="w-32 h-32 rounded-[3rem] flex items-center justify-center mb-10 shadow-2xl shadow-green-100 text-white bg-green-500 animate-in zoom-in-50 duration-500">
         <CheckCircle size={64} />
       </div>
@@ -281,15 +342,17 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
         <h2 className="text-4xl font-black text-gray-900 tracking-tighter">TASK COMPLETE</h2>
         <div className="w-12 h-1.5 bg-[#FA4616] mx-auto rounded-full"></div>
         <p className="text-gray-500 font-bold text-lg leading-relaxed max-w-[300px] mx-auto">
-          Your voice sample has been successfully recorded and processed by the institute.
+          {isSession && currentTaskIndex < TASKS.length - 1 
+            ? "Great job! Get ready for the next task in the sequence."
+            : "Your voice sample has been successfully recorded and processed by the institute."}
         </p>
       </div>
       <button
-        onClick={() => navigate('/dashboard')}
+        onClick={handleNext}
         className="w-full py-6 rounded-[2.5rem] text-white font-black text-xl shadow-xl active:scale-95 transition-all"
         style={{ backgroundColor: THEME.primary }}
       >
-        Return to Dashboard
+        {isSession && currentTaskIndex < TASKS.length - 1 ? "Next Task" : "Return to Dashboard"}
       </button>
       <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em] mt-8 italic">Norman Fixel Neurological Institute</p>
     </div>

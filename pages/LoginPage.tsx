@@ -1,26 +1,15 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { THEME } from '../constants';
-import { AlertCircle, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: (name: string) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (username === 'admin' && password === 'admin') {
-      onLogin(username);
-    } else {
-      setError('Incorrect username or password');
-    }
+  const handleContinue = () => {
+    onLogin('Patient');
   };
 
   return (
@@ -46,43 +35,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="w-full space-y-5 relative z-10 max-w-sm">
-        {error && (
-          <div className="bg-red-50 border border-red-100 p-5 rounded-[2rem] flex items-center gap-4 text-red-600 font-black text-xs uppercase tracking-tight">
-            <AlertCircle size={20} className="shrink-0" />
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] px-4">Username</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Username"
-            className="w-full bg-white border-2 border-transparent focus:border-[#0021A5] outline-none rounded-[2rem] py-5 px-8 text-lg font-bold transition-all shadow-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] px-4">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            className="w-full bg-white border-2 border-transparent focus:border-[#0021A5] outline-none rounded-[2rem] py-5 px-8 text-lg font-bold transition-all shadow-sm"
-          />
-        </div>
-        
+      <div className="w-full relative z-10 max-w-sm">
         <button
-          type="submit"
+          onClick={handleContinue}
           className="w-full text-white font-black py-6 rounded-[2.5rem] text-xl transition-all shadow-xl shadow-blue-100 mt-4 active:scale-95 flex items-center justify-center gap-3 group"
           style={{ backgroundColor: THEME.primary }}
         >
-          Secure Sign In
+          Continue
         </button>
-      </form>
+      </div>
       
       <div className="mt-16 text-center relative z-10">
         <div className="flex items-center justify-center gap-2 mb-2 text-gray-300">

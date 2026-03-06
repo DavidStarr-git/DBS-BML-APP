@@ -114,7 +114,7 @@ const App: React.FC = () => {
       const setting = result.setting === 'Unknown' ? 'Unknown' : result.setting;
       
       a.href = url;
-      a.download = `DBS_${taskName}_Setting_${setting}_${timestamp}.wav`;
+      a.download = `DBS_${taskName}_Group_${setting}_${timestamp}.wav`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

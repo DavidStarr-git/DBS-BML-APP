@@ -87,7 +87,7 @@ const StatsPage: React.FC<StatsPageProps> = ({ history }) => {
                           <Layers size={12} />
                           <span className="text-[9px] font-black uppercase tracking-widest">Stim Level</span>
                         </div>
-                        <span className="text-sm font-black text-gray-700">Setting {item.setting === 'Unknown' ? '?' : item.setting}</span>
+                        <span className="text-sm font-black text-gray-700">Group {item.setting === 'Unknown' ? '?' : item.setting}</span>
                       </div>
                     </div>
                   </div>

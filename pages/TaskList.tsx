@@ -41,7 +41,7 @@ const TaskList: React.FC<TaskListProps> = ({ preferredTaskId, onSetPreferred }) 
                 </div>
                 <div>
                   <h3 className="font-black text-gray-900 text-lg leading-none mb-2">{task.title}</h3>
-                  <p className="text-gray-400 text-xs font-black uppercase tracking-widest">{task.type}</p>
+                  <p className="text-[#FA4616] text-[10px] font-black uppercase tracking-widest">{task.type}</p>
                 </div>
               </div>
               <div className="flex gap-2">

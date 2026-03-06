@@ -3,13 +3,15 @@ export type StimSetting = 'A' | 'B' | 'C' | 'Unknown';
 
 export interface AssessmentTask {
   id: string;
-  type: 'Phonation' | 'DDK' | 'Reading' | 'Articulation';
+  type: string;
   title: string;
   instruction: string;
   prompt: string;
   icon: string;
   significance: string;
   durationSeconds: number;
+  wordPool?: string[];
+  sentencePool?: string[];
 }
 
 export interface RecordingResult {

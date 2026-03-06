@@ -38,20 +38,12 @@ const Dashboard: React.FC<DashboardProps> = ({
       .catch(() => setMicReady(false));
   }, []);
 
-  const handleRandomStart = () => {
+  const handleStartSession = () => {
     setIsSelecting(true);
     setTimeout(() => {
-      const randomIndex = Math.floor(Math.random() * TASKS.length);
-      const randomTask = TASKS[randomIndex];
       setIsSelecting(false);
-      navigate(`/record/${randomTask.id}`);
+      navigate(`/record/${TASKS[0].id}`, { state: { isSession: true, taskIndex: 0 } });
     }, 1200);
-  };
-
-  const handlePreferredStart = () => {
-    if (preferredTaskId) {
-      navigate(`/record/${preferredTaskId}`);
-    }
   };
 
   const stimOptions: Exclude<StimSetting, 'Unknown'>[] = ['A', 'B', 'C'];
@@ -74,7 +66,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <Activity size={40} />
               </div>
               <h2 className="text-3xl font-black text-gray-900 leading-tight">Current Level</h2>
-              <p className="text-gray-500 font-medium text-lg">Please select your active stimulation setting to proceed.</p>
+              <p className="text-gray-500 font-medium text-lg">Please select your active stimulation group to proceed.</p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 relative z-10">
@@ -87,7 +79,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <span className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-2xl font-black text-[#0021A5] group-hover:scale-110 transition-transform">
                     {opt}
                   </span>
-                  <span className="text-xl font-black text-gray-700">Setting {opt}</span>
+                  <span className="text-xl font-black text-gray-700">Group {opt}</span>
                 </button>
               ))}
               
@@ -131,7 +123,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           <div>
             <h3 className="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] leading-none mb-1">Active DBS Level</h3>
             <p className="text-xl font-black text-gray-900">
-              {currentSetting === 'Unknown' ? "Not Selected" : `Setting ${currentSetting}`}
+              {currentSetting === 'Unknown' ? "Not Selected" : `Group ${currentSetting}`}
             </p>
           </div>
         </div>
@@ -171,66 +163,37 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Primary Action */}
-      <div className="pt-4 relative z-10 space-y-4">
-        {preferredTask ? (
-          <div className="space-y-4">
-            <button
-              onClick={handlePreferredStart}
-              className="w-full py-10 rounded-[3.5rem] flex flex-col items-center justify-center gap-3 text-white shadow-2xl shadow-blue-200 active:scale-95 transition-all group relative overflow-hidden"
-              style={{ backgroundColor: THEME.primary }}
-            >
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
-              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center border-4 border-white/10 group-hover:scale-110 transition-transform">
-                <Play fill="white" size={28} className="ml-1" />
-              </div>
-              <div className="text-center">
-                <span className="text-xl font-black uppercase tracking-[0.2em] block">
-                  Start Preferred Task
-                </span>
-                <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{preferredTask.title}</span>
-              </div>
-            </button>
-            
-            <button
-              onClick={handleRandomStart}
-              disabled={isSelecting}
-              className="w-full py-6 rounded-[2.5rem] flex items-center justify-center gap-3 text-[#0021A5] bg-blue-50 border-2 border-blue-100 active:scale-95 transition-all group disabled:opacity-50"
-            >
-              {isSelecting ? (
-                <Loader2 className="animate-spin" size={20} />
-              ) : (
-                <Activity size={20} />
-              )}
-              <span className="text-xs font-black uppercase tracking-[0.2em]">
-                {isSelecting ? 'Selecting...' : 'Start Random Task'}
-              </span>
-            </button>
+      <div className="pt-4 relative z-10 space-y-6">
+        <div className="text-center px-6">
+          <p className="text-gray-500 text-sm font-bold leading-relaxed">
+            There are {TASKS.length} tasks to complete, which should take about 10 minutes.
+          </p>
+        </div>
+
+        <button
+          onClick={handleStartSession}
+          disabled={isSelecting}
+          className="w-full py-14 rounded-[3.5rem] flex flex-col items-center justify-center gap-4 text-white shadow-2xl shadow-blue-200 active:scale-95 transition-all group relative overflow-hidden disabled:opacity-90"
+          style={{ backgroundColor: THEME.primary }}
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-500/10 rounded-full -ml-12 -mb-12"></div>
+          
+          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center border-4 border-white/10 group-hover:scale-110 transition-transform">
+            {isSelecting ? (
+              <Loader2 className="animate-spin text-white" size={36} />
+            ) : (
+              <Play fill="white" size={36} className="ml-1" />
+            )}
           </div>
-        ) : (
-          <button
-            onClick={handleRandomStart}
-            disabled={isSelecting}
-            className="w-full py-14 rounded-[3.5rem] flex flex-col items-center justify-center gap-4 text-white shadow-2xl shadow-blue-200 active:scale-95 transition-all group relative overflow-hidden disabled:opacity-90"
-            style={{ backgroundColor: THEME.primary }}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-500/10 rounded-full -ml-12 -mb-12"></div>
-            
-            <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center border-4 border-white/10 group-hover:scale-110 transition-transform">
-              {isSelecting ? (
-                <Loader2 className="animate-spin text-white" size={36} />
-              ) : (
-                <Play fill="white" size={36} className="ml-1" />
-              )}
-            </div>
-            <div className="text-center">
-              <span className="text-2xl font-black uppercase tracking-[0.3em] block">
-                {isSelecting ? 'Selecting...' : 'Start Session'}
-              </span>
-              <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest">UF Diagnostic Protocol</span>
-            </div>
-          </button>
-        )}
+          <div className="text-center">
+            <span className="text-2xl font-black uppercase tracking-[0.3em] block">
+              {isSelecting ? 'Selecting...' : 'Start Session'}
+            </span>
+            <span className="text-[10px] font-bold opacity-60 uppercase tracking-widest">UF Diagnostic Protocol</span>
+          </div>
+        </button>
+        
         {currentSetting === 'Unknown' && (
           <div className="flex items-center justify-center gap-2 mt-6 animate-pulse">
             <div className="w-1.5 h-1.5 rounded-full bg-[#FA4616]"></div>
