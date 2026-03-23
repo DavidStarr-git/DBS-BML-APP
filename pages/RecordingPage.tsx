@@ -5,6 +5,7 @@ import { ChevronLeft, Loader2, CheckCircle, Mic, Volume2 } from 'lucide-react';
 import { TASKS, THEME } from '../constants';
 import { StimSetting, RecordingResult } from '../types';
 import { audioBufferToWav } from '../src/utils/wavEncoder';
+import { NativeBridge } from '../src/utils/nativeBridge';
 
 interface RecordingPageProps {
   currentSetting: StimSetting;
@@ -47,6 +48,7 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
   }, [task]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -80,6 +82,9 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
     };
   }, []);
 
@@ -87,11 +92,29 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
 
   const startRecording = async () => {
     try {
+      // 1. First, ensure native-level permissions are requested
+      // This implements the logic provided for Android/App context
+      const hasPermission = await NativeBridge.requestMicrophonePermission();
+      if (!hasPermission) {
+        throw new Error('Microphone permission denied at system level');
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('MediaDevices API not supported in this browser');
+      }
+
       const constraints = {
         audio: deviceId === 'default' ? true : { deviceId: { exact: deviceId } }
       };
+      
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      const mediaRecorder = new MediaRecorder(stream);
+      streamRef.current = stream;
+      
+      // Try to find a supported mime type
+      const mimeTypes = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/aac'];
+      const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
+      
+      const mediaRecorder = new MediaRecorder(stream, supportedMimeType ? { mimeType: supportedMimeType } : undefined);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -100,8 +123,14 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
       };
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(chunksRef.current, { type: supportedMimeType || 'audio/webm' });
         
+        // Stop all tracks to release the microphone
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+
         // Convert to WAV
         try {
           const arrayBuffer = await audioBlob.arrayBuffer();
@@ -125,7 +154,8 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
         setTimer(elapsed);
       }, 50); // 20fps for smooth UI
     } catch (err) {
-      alert('Microphone error. Please check settings.');
+      console.error("Recording start error:", err);
+      alert('Microphone error: ' + (err instanceof Error ? err.message : 'Please check settings and permissions.'));
       setPhase('intro');
     }
   };

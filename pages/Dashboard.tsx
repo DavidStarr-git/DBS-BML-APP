@@ -17,6 +17,8 @@ interface DashboardProps {
   preferredTaskId: string | null;
 }
 
+import { NativeBridge } from '../src/utils/nativeBridge';
+
 const Dashboard: React.FC<DashboardProps> = ({ 
   user, 
   currentSetting, 
@@ -33,9 +35,12 @@ const Dashboard: React.FC<DashboardProps> = ({
   const preferredTask = TASKS.find(t => t.id === preferredTaskId);
 
   useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(() => setMicReady(true))
-      .catch(() => setMicReady(false));
+    NativeBridge.requestMicrophonePermission()
+      .then((granted) => setMicReady(granted))
+      .catch((err) => {
+        console.error("Mic check failed:", err);
+        setMicReady(false);
+      });
   }, []);
 
   const handleStartSession = () => {
