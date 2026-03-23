@@ -1,17 +1,22 @@
-
-import { VoiceRecorder, RecordingData, GenericResponse } from 'capacitor-voice-recorder';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { VoiceRecorder, RecordingData } from 'capacitor-voice-recorder';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 
 /**
- * Request Microphone permissions for Capacitor.
+ * Request microphone permission for Capacitor.
  */
 export const requestPermissions = async (): Promise<boolean> => {
   if (!Capacitor.isNativePlatform()) return true;
 
   try {
-    const status = await VoiceRecorder.requestAudioRecordingPermission();
-    return status.value;
+    const hasPermission = await VoiceRecorder.hasAudioRecordingPermission();
+
+    if (!hasPermission.value) {
+      const result = await VoiceRecorder.requestAudioRecordingPermission();
+      return result.value;
+    }
+
+    return true;
   } catch (err) {
     console.error('Permission request failed:', err);
     return false;
@@ -34,10 +39,10 @@ export const startRecording = async (fileName: string): Promise<boolean> => {
       return false;
     }
 
-    const hasPermission = await VoiceRecorder.hasAudioRecordingPermission();
-    if (!hasPermission.value) {
-      const granted = await requestPermissions();
-      if (!granted) return false;
+    const granted = await requestPermissions();
+    if (!granted) {
+      console.error('Microphone permission not granted');
+      return false;
     }
 
     const result = await VoiceRecorder.startRecording();
@@ -65,23 +70,24 @@ export const stopRecording = async (): Promise<string | null> => {
 };
 
 /**
- * Export a file to the device's Documents/Downloads folder using Capacitor Filesystem.
+ * Export a file to device storage.
  */
-export const exportToDownloads = async (base64Data: string, fileName: string): Promise<boolean> => {
+export const exportToDownloads = async (
+  base64Data: string,
+  fileName: string
+): Promise<boolean> => {
   if (!Capacitor.isNativePlatform()) return false;
 
   try {
     const destName = `${fileName}_${Date.now()}.wav`;
-    
-    // Save to Documents directory (most accessible on Android after Downloads)
+
     await Filesystem.writeFile({
       path: destName,
       data: base64Data,
       directory: Directory.Documents,
-      encoding: Encoding.UTF8, // Filesystem.writeFile handles base64 if data is base64 string
     });
 
-    console.log(`File saved to Documents as ${destName}`);
+    console.log(`File saved as ${destName}`);
     return true;
   } catch (error) {
     console.error('Export failed:', error);

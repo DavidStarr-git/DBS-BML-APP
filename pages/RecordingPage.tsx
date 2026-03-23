@@ -18,6 +18,19 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
   const { taskId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const init = async () => {
+      const granted = await NativeBridge.requestMicrophonePermission();
+
+      if (!granted) {
+        alert("Microphone permission is required.");
+      }
+    };
+
+    init();
+  }, []);
+
   const task = TASKS.find(t => t.id === taskId);
 
   const sessionState = location.state as { isSession?: boolean; taskIndex?: number } | null;
