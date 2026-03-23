@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft, Loader2, CheckCircle, Mic, Volume2 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 import { TASKS, THEME } from '../constants';
 import { StimSetting, RecordingResult } from '../types';
 import { audioBufferToWav } from '../src/utils/wavEncoder';
@@ -92,7 +93,23 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
 
   const startRecording = async () => {
     try {
-      // 1. Use the stream we already captured on button click
+      if (Capacitor.isNativePlatform()) {
+        const success = await NativeBridge.startRecording(task.id);
+        if (success) {
+          setPhase('recording');
+          setTimer(0);
+          startTimeRef.current = Date.now();
+          timerIntervalRef.current = window.setInterval(() => {
+            const elapsed = (Date.now() - startTimeRef.current) / 1000;
+            setTimer(elapsed);
+          }, 50);
+        } else {
+          throw new Error('Native recording failed to start');
+        }
+        return;
+      }
+
+      // Web implementation
       let stream = streamRef.current;
       
       if (!stream) {
@@ -154,11 +171,43 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && phase === 'recording') {
-      mediaRecorderRef.current.stop();
-      setPhase('processing');
+  const stopRecording = async () => {
+    if (phase === 'recording') {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      setPhase('processing');
+
+      if (Capacitor.isNativePlatform()) {
+        const base64Data = await NativeBridge.stopRecording();
+        if (base64Data) {
+          // Convert base64 to Blob for consistent handling
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'audio/wav' });
+
+          // Also trigger native export to Downloads/Documents
+          const now = new Date();
+          const timestamp = now.toISOString().split('.')[0].replace(/[:]/g, '-');
+          const taskName = task.title.replace(/\s+/g, '_');
+          const setting = currentSetting === 'Unknown' ? 'Unknown' : currentSetting;
+          const fileName = `DBS_${taskName}_Group_${setting}_${timestamp}`;
+          
+          await NativeBridge.exportToDownloads(base64Data, fileName);
+          
+          handleSave(blob);
+        } else {
+          console.error('Native stopRecording returned null');
+          setPhase('intro');
+        }
+        return;
+      }
+
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
     }
   };
 

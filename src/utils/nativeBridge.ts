@@ -1,5 +1,6 @@
 
 import { Capacitor } from '@capacitor/core';
+import * as audioNative from './audioNative';
 
 /**
  * NativeBridge handles the transition between Web and Native App environments.
@@ -36,19 +37,7 @@ export const NativeBridge = {
     // 1. Check if we are running in a native app context
     if (Capacitor.isNativePlatform()) {
       console.log("Running in Native App context - requesting Android/iOS permissions");
-      
-      // Note: This is where the Java code logic you provided is implemented 
-      // via the Capacitor bridge. Capacitor handles the ContextCompat.checkSelfPermission
-      // and ActivityCompat.requestPermissions calls for us.
-      try {
-        // We use the web API first as Capacitor's bridge often hooks into this
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(t => t.stop());
-        return true;
-      } catch (err) {
-        console.error("Native permission request failed:", err);
-        return false;
-      }
+      return await audioNative.requestPermissions();
     }
 
     // 2. Standard Web implementation
@@ -61,5 +50,35 @@ export const NativeBridge = {
       console.error("Web permission request failed:", err);
       return false;
     }
+  },
+
+  /**
+   * Start recording audio.
+   */
+  async startRecording(fileName: string): Promise<boolean> {
+    if (Capacitor.isNativePlatform()) {
+      return await audioNative.startRecording(fileName);
+    }
+    return false; // Web handles this via MediaRecorder in RecordingPage
+  },
+
+  /**
+   * Stop recording audio.
+   */
+  async stopRecording(): Promise<string | null> {
+    if (Capacitor.isNativePlatform()) {
+      return await audioNative.stopRecording();
+    }
+    return null;
+  },
+
+  /**
+   * Export to Downloads/Documents.
+   */
+  async exportToDownloads(base64Data: string, fileName: string): Promise<boolean> {
+    if (Capacitor.isNativePlatform()) {
+      return await audioNative.exportToDownloads(base64Data, fileName);
+    }
+    return false;
   }
 };
