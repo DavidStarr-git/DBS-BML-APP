@@ -92,24 +92,18 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
 
   const startRecording = async () => {
     try {
-      // 1. First, ensure native-level permissions are requested
-      // This implements the logic provided for Android/App context
-      const hasPermission = await NativeBridge.requestMicrophonePermission();
-      if (!hasPermission) {
-        throw new Error('Microphone permission denied at system level');
+      // 1. Use the stream we already captured on button click
+      let stream = streamRef.current;
+      
+      if (!stream) {
+        // Fallback if stream was lost
+        const constraints = {
+          audio: deviceId === 'default' ? true : { deviceId: { exact: deviceId } }
+        };
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
       }
 
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('MediaDevices API not supported in this browser');
-      }
-
-      const constraints = {
-        audio: deviceId === 'default' ? true : { deviceId: { exact: deviceId } }
-      };
-      
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      
       // Try to find a supported mime type
       const mimeTypes = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/aac'];
       const supportedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
@@ -207,6 +201,36 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
   // Detect if the prompt is a long passage
   const isLongPrompt = randomizedPrompt.length > 50;
 
+  const handleBeginProtocol = async () => {
+    try {
+      // Request permission and capture stream immediately on user gesture
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('MediaDevices API not supported');
+      }
+
+      // Initialize AudioContext on user gesture to avoid issues on mobile
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const tempCtx = new AudioCtx();
+        if (tempCtx.state === 'suspended') {
+          await tempCtx.resume();
+        }
+        await tempCtx.close();
+      }
+
+      const constraints = {
+        audio: deviceId === 'default' ? true : { deviceId: { exact: deviceId } }
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream; // Store the active stream
+      setPhase('countdown');
+    } catch (err) {
+      console.error("Permission request failed:", err);
+      alert('Microphone access is required. Please check your browser permissions and ensure no other app is using the microphone.');
+    }
+  };
+
   if (phase === 'intro') {
     return (
       <div className="min-h-screen flex flex-col bg-white p-8 relative">
@@ -247,7 +271,7 @@ const RecordingPage: React.FC<RecordingPageProps> = ({ currentSetting, onSave, d
         </div>
         
         <button
-          onClick={() => setPhase('countdown')}
+          onClick={handleBeginProtocol}
           className="w-full py-6 rounded-[2.5rem] text-white font-black text-xl shadow-2xl shadow-blue-100 active:scale-95 transition-all mb-8"
           style={{ backgroundColor: THEME.primary }}
         >

@@ -29,21 +29,29 @@ const Dashboard: React.FC<DashboardProps> = ({
   preferredTaskId
 }) => {
   const navigate = useNavigate();
-  const [micReady, setMicReady] = useState<boolean | null>(null);
+  const [micStatus, setMicStatus] = useState<'granted' | 'denied' | 'prompt' | 'checking'>('checking');
   const [isSelecting, setIsSelecting] = useState(false);
 
   const preferredTask = TASKS.find(t => t.id === preferredTaskId);
 
   useEffect(() => {
-    NativeBridge.requestMicrophonePermission()
-      .then((granted) => setMicReady(granted))
-      .catch((err) => {
-        console.error("Mic check failed:", err);
-        setMicReady(false);
-      });
+    NativeBridge.checkPermissionStatus()
+      .then((status) => setMicStatus(status))
+      .catch(() => setMicStatus('prompt'));
   }, []);
 
-  const handleStartSession = () => {
+  const handleRequestMic = async () => {
+    const granted = await NativeBridge.requestMicrophonePermission();
+    setMicStatus(granted ? 'granted' : 'denied');
+    return granted;
+  };
+
+  const handleStartSession = async () => {
+    if (micStatus !== 'granted') {
+      const granted = await handleRequestMic();
+      if (!granted) return;
+    }
+
     setIsSelecting(true);
     setTimeout(() => {
       setIsSelecting(false);
@@ -153,18 +161,41 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
         
         <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col items-center text-center group">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-active:scale-90 ${micReady ? 'bg-blue-50' : 'bg-red-50'}`}>
-            {micReady === false ? (
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform group-active:scale-90 ${micStatus === 'granted' ? 'bg-blue-50' : micStatus === 'denied' ? 'bg-red-50' : 'bg-orange-50'}`}>
+            {micStatus === 'denied' ? (
               <AlertCircle className="text-red-600" size={32} />
-            ) : (
+            ) : micStatus === 'granted' ? (
               <Mic2 className="text-[#0021A5]" size={32} />
+            ) : (
+              <HelpCircle className="text-orange-500" size={32} />
             )}
           </div>
-          <h3 className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Microphone Status</h3>
-          <p className="text-xl font-black text-gray-900 mt-1">
-            {micReady === null ? '...' : micReady ? 'Active' : 'Error'}
-          </p>
+          <h3 className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mb-1">Microphone</h3>
+          {micStatus === 'prompt' ? (
+            <button 
+              onClick={handleRequestMic}
+              className="text-[10px] font-black text-[#0021A5] uppercase tracking-widest underline underline-offset-4"
+            >
+              Enable Now
+            </button>
+          ) : (
+            <p className="text-xl font-black text-gray-900 mt-1">
+              {micStatus === 'checking' ? '...' : micStatus === 'granted' ? 'Active' : 'Blocked'}
+            </p>
+          )}
         </div>
+        {micStatus === 'denied' && (
+          <div className="col-span-2 bg-red-50 p-4 rounded-2xl border border-red-100 mt-2">
+            <p className="text-[10px] text-red-600 font-black uppercase tracking-widest mb-1">Troubleshooting:</p>
+            <p className="text-[10px] text-red-500 font-bold leading-tight">
+              Microphone access is blocked. To fix this on a Galaxy Tablet:
+              <br/>1. Tap the lock icon in the address bar.
+              <br/>2. Select 'Site settings'.
+              <br/>3. Tap 'Microphone' and select 'Allow'.
+              <br/>4. Refresh this page.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Primary Action */}

@@ -7,6 +7,27 @@ import { Capacitor } from '@capacitor/core';
  */
 export const NativeBridge = {
   /**
+   * Checks the current permission status without triggering a prompt.
+   */
+  async checkPermissionStatus(): Promise<'granted' | 'denied' | 'prompt'> {
+    if (Capacitor.isNativePlatform()) {
+      // In native, we'd ideally use a Capacitor plugin, but for now we'll assume 'prompt' 
+      // if we can't check easily, or just use the web API check.
+    }
+
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const status = await navigator.permissions.query({ name: 'microphone' as any });
+        return status.state as 'granted' | 'denied' | 'prompt';
+      }
+    } catch (e) {
+      console.error("Permission query not supported", e);
+    }
+    
+    return 'prompt';
+  },
+
+  /**
    * Checks and requests microphone permissions.
    * On Web: Uses navigator.mediaDevices.getUserMedia
    * On App (Android/iOS): Uses Capacitor's native permission bridge
